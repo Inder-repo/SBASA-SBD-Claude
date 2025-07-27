@@ -2,43 +2,73 @@
 streamlit>=1.28.0
 
 # Data Processing and Analysis
-pandas>=2.0.0
+pandas>=1.5.0
 numpy>=1.24.0
 
-# Visualization Libraries
+# Data Visualization
 plotly>=5.15.0
 
-# Network Analysis
-networkx>=3.1
+# Date and Time Operations (built-in with Python)
+# datetime is built-in - no installation needed
 
-# Database
-sqlite3  # Built into Python standard library
+# Data Classes (built-in with Python 3.7+)
+# dataclasses is built-in - no installation needed
 
-# Date and Time Handling
-datetime  # Built into Python standard library
+# Type Hints (built-in with Python)
+# typing is built-in - no installation needed
 
-# Data Classes and Type Hints
-dataclasses  # Built into Python standard library (Python 3.7+)
-typing  # Built into Python standard library
+# Hashing Operations (built-in with Python)
+# hashlib is built-in - no installation needed
 
-# Unique ID Generation
-uuid  # Built into Python standard library
+# Optional: Additional useful packages for enterprise security applications
+psycopg2-binary>=2.9.5  # PostgreSQL adapter (if switching from session state storage)
+pymongo>=4.3.3          # MongoDB driver (if using MongoDB)
+cryptography>=41.0.0    # For enhanced cryptographic operations
+python-ldap>=3.4.0      # For LDAP/Active Directory integration
+pyjwt>=2.8.0           # For JWT token handling
+redis>=4.5.0           # For caching and session management
+requests>=2.31.0       # For HTTP requests and API integrations
 
-# JSON Handling
-json  # Built into Python standard library
+# Security and Authentication
+bcrypt>=4.0.1          # For password hashing
+passlib>=1.7.4         # Password hashing library
+python-jose>=3.3.0     # JOSE implementation for JWT
 
-# Cryptographic Functions
-hashlib  # Built into Python standard library
+# Data Validation
+pydantic>=2.0.0        # Data validation using Python type annotations
 
-# HTTP Requests
-requests>=2.31.0
+# Environment Management
+python-dotenv>=1.0.0   # For loading environment variables
 
-# Email Functionality
-email  # Built into Python standard library
-smtplib  # Built into Python standard library
+# Logging and Monitoring
+structlog>=23.1.0      # Structured logging
 
-# Optional: For production deployment
-# gunicorn>=21.2.0  # For production WSGI server
-# python-dotenv>=1.0.0  # For environment variable management
+# Excel/CSV Processing (if needed for data import/export)
+openpyxl>=3.1.0        # For Excel file operations
+xlsxwriter>=3.1.0      # Alternative Excel writer
 
+# Development and Testing
+pytest>=7.4.0         # Testing framework
+pytest-cov>=4.1.0     # Coverage reporting
+black>=23.7.0          # Code formatting
+flake8>=6.0.0          # Code linting
+mypy>=1.5.0           # Static type checking
 
+# Production Deployment
+gunicorn>=21.2.0       # WSGI HTTP Server for production deployment
+docker>=6.1.0          # Docker Python SDK (if using Docker)
+
+# Email functionality (if needed - currently removed from main code)
+# smtplib and email.mime are built-in with Python
+
+# Database functionality (SQLite replaced with session state)
+# sqlite3 is built-in with Python - no installation needed
+
+# Network analysis (removed from main code to reduce complexity)
+# networkx>=3.1         # Uncomment if you add network analysis features
+
+# JSON operations (built-in with Python)
+# json is built-in - no installation needed
+
+# UUID generation (built-in with Python)
+# uuid is built-in - no installation needed
