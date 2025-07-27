@@ -3,19 +3,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
-import networkx as nx
 import numpy as np
-import json
 import datetime
-import uuid
 from dataclasses import dataclass
 from typing import Dict, List, Optional
-import sqlite3
 import hashlib
-import requests
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import smtplib
 
 # Enterprise Configuration
 ENTERPRISE_CONFIG = {
@@ -37,8 +29,8 @@ class SecurityControl:
     implementation_status: str
     risk_level: str
     owner: str
-    last_assessment: datetime.date
-    next_review: datetime.date
+    last_assessment: str
+    next_review: str
     cost: float
     effectiveness_score: float
 
@@ -53,7 +45,7 @@ class RiskAssessment:
     mitigation_controls: List[str]
     owner: str
     status: str
-    target_date: datetime.date
+    target_date: str
 
 @dataclass
 class ComplianceMapping:
@@ -114,9 +106,6 @@ st.markdown("""
         border-radius: 8px;
         margin: 10px 0;
     }
-    .sidebar .sidebar-content {
-        background-color: #f8fafc;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -133,7 +122,6 @@ class EnterpriseAuth:
         }
     
     def authenticate_user(self, username: str, role: str) -> bool:
-        # In production, integrate with enterprise SSO/LDAP
         if not hasattr(st.session_state, 'authenticated'):
             st.session_state.authenticated = False
             st.session_state.user_role = None
@@ -147,84 +135,75 @@ class EnterpriseAuth:
         user_permissions = self.roles.get(st.session_state.user_role, [])
         return required_permission in user_permissions
 
-# Enterprise Data Management
+# Enterprise Data Management (Using session state instead of SQLite for Streamlit compatibility)
 class EnterpriseDataManager:
     def __init__(self):
-        self.init_database()
+        self.init_sample_data()
     
-    def init_database(self):
-        # In production, use enterprise database (PostgreSQL, Oracle, etc.)
-        conn = sqlite3.connect('enterprise_security.db')
-        cursor = conn.cursor()
+    def init_sample_data(self):
+        if 'security_controls' not in st.session_state:
+            st.session_state.security_controls = [
+                {
+                    'control_id': 'CTRL-001',
+                    'name': 'Data Encryption',
+                    'description': 'Encryption of data at rest and in transit',
+                    'framework': 'ISO27001',
+                    'implementation_status': 'Implemented',
+                    'risk_level': 'HIGH',
+                    'owner': 'Security Team',
+                    'last_assessment': '2024-01-01',
+                    'next_review': '2024-07-01',
+                    'cost': 150000.0,
+                    'effectiveness_score': 95.0
+                },
+                {
+                    'control_id': 'CTRL-002',
+                    'name': 'Multi-Factor Authentication',
+                    'description': 'MFA for all privileged accounts',
+                    'framework': 'NIST',
+                    'implementation_status': 'Implemented',
+                    'risk_level': 'HIGH',
+                    'owner': 'Identity Team',
+                    'last_assessment': '2024-01-15',
+                    'next_review': '2024-07-15',
+                    'cost': 75000.0,
+                    'effectiveness_score': 92.0
+                }
+            ]
         
-        # Create tables for enterprise data
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS security_controls (
-                control_id TEXT PRIMARY KEY,
-                name TEXT,
-                description TEXT,
-                framework TEXT,
-                implementation_status TEXT,
-                risk_level TEXT,
-                owner TEXT,
-                last_assessment DATE,
-                next_review DATE,
-                cost REAL,
-                effectiveness_score REAL
-            )
-        ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS risk_assessments (
-                risk_id TEXT PRIMARY KEY,
-                domain TEXT,
-                description TEXT,
-                likelihood INTEGER,
-                impact INTEGER,
-                risk_score INTEGER,
-                mitigation_controls TEXT,
-                owner TEXT,
-                status TEXT,
-                target_date DATE,
-                created_date DATE
-            )
-        ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS compliance_mappings (
-                id TEXT PRIMARY KEY,
-                framework TEXT,
-                requirement TEXT,
-                sabsa_domain TEXT,
-                control_id TEXT,
-                compliance_status TEXT,
-                evidence TEXT,
-                auditor_notes TEXT,
-                last_review DATE
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
+        if 'risk_assessments' not in st.session_state:
+            st.session_state.risk_assessments = [
+                {
+                    'risk_id': 'RSK-001',
+                    'domain': 'Data Security',
+                    'description': 'Data breach via third-party vendor',
+                    'likelihood': 2,
+                    'impact': 3,
+                    'risk_score': 6,
+                    'mitigation_controls': ['CTRL-001', 'CTRL-002'],
+                    'owner': 'CISO',
+                    'status': 'Open',
+                    'target_date': '2024-03-01'
+                },
+                {
+                    'risk_id': 'RSK-002',
+                    'domain': 'Identity & Access Management',
+                    'description': 'Privileged account compromise',
+                    'likelihood': 1,
+                    'impact': 3,
+                    'risk_score': 3,
+                    'mitigation_controls': ['CTRL-002'],
+                    'owner': 'Security Manager',
+                    'status': 'Mitigating',
+                    'target_date': '2024-02-15'
+                }
+            ]
     
-    def get_security_controls(self) -> List[SecurityControl]:
-        conn = sqlite3.connect('enterprise_security.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM security_controls')
-        rows = cursor.fetchall()
-        conn.close()
-        
-        controls = []
-        for row in rows:
-            controls.append(SecurityControl(
-                control_id=row[0], name=row[1], description=row[2],
-                framework=row[3], implementation_status=row[4],
-                risk_level=row[5], owner=row[6],
-                last_assessment=datetime.datetime.strptime(row[7], '%Y-%m-%d').date() if row[7] else None,
-                next_review=datetime.datetime.strptime(row[8], '%Y-%m-%d').date() if row[8] else None,
-                cost=row[9], effectiveness_score=row[10]
-            ))
-        return controls
+    def get_security_controls(self) -> List[dict]:
+        return st.session_state.security_controls
+    
+    def get_risk_assessments(self) -> List[dict]:
+        return st.session_state.risk_assessments
 
 # Enterprise Risk Engine
 class EnterpriseRiskEngine:
@@ -240,26 +219,26 @@ class EnterpriseRiskEngine:
         risk_level, color = self.risk_matrix.get((likelihood, impact), ("UNKNOWN", "#6b7280"))
         return score, risk_level, color
     
-    def generate_risk_heatmap(self, risks: List[RiskAssessment]):
-        # Create risk heatmap for executive dashboard
-        likelihood_vals = [r.likelihood for r in risks]
-        impact_vals = [r.impact for r in risks]
+    def generate_risk_heatmap(self, risks: List[dict]):
+        likelihood_vals = [r['likelihood'] for r in risks]
+        impact_vals = [r['impact'] for r in risks]
+        risk_scores = [r['risk_score'] for r in risks]
+        domains = [r['domain'] for r in risks]
         
         fig = go.Figure()
         
-        # Add risk points
         fig.add_trace(go.Scatter(
             x=likelihood_vals,
             y=impact_vals,
             mode='markers+text',
             marker=dict(
-                size=[r.risk_score * 5 for r in risks],
-                color=[r.risk_score for r in risks],
+                size=[score * 5 for score in risk_scores],
+                color=risk_scores,
                 colorscale='Reds',
                 showscale=True,
                 colorbar=dict(title="Risk Score")
             ),
-            text=[r.domain for r in risks],
+            text=domains,
             textposition="top center",
             hovertemplate='<b>%{text}</b><br>Likelihood: %{x}<br>Impact: %{y}<br>Score: %{marker.color}<extra></extra>'
         ))
@@ -275,7 +254,7 @@ class EnterpriseRiskEngine:
         
         return fig
 
-# Integration with Enterprise Systems
+# Integration with Enterprise Systems (Mock data for Streamlit)
 class EnterpriseIntegrations:
     def __init__(self):
         self.integrations = {
@@ -289,15 +268,12 @@ class EnterpriseIntegrations:
         }
     
     def sync_with_servicenow(self):
-        # Mock ServiceNow integration
         return {"incidents": 45, "changes": 12, "problems": 3}
     
     def sync_with_splunk(self):
-        # Mock Splunk integration
         return {"alerts": 234, "events": 1500000, "threats": 12}
     
     def sync_with_grc_platform(self):
-        # Mock GRC platform integration
         return {"open_findings": 67, "overdue_reviews": 8, "compliance_score": 94.2}
 
 # Executive Dashboard
@@ -440,34 +416,62 @@ def create_risk_management_module():
             if st.button("Add Risk"):
                 risk_engine = EnterpriseRiskEngine()
                 score, level, color = risk_engine.calculate_risk_score(likelihood, impact)
+                
+                # Add to session state
+                new_risk = {
+                    'risk_id': f'RSK-{len(st.session_state.risk_assessments) + 1:03d}',
+                    'domain': risk_domain,
+                    'description': risk_description,
+                    'likelihood': likelihood,
+                    'impact': impact,
+                    'risk_score': score,
+                    'mitigation_controls': [],
+                    'owner': risk_owner,
+                    'status': 'Open',
+                    'target_date': str(target_date)
+                }
+                
+                st.session_state.risk_assessments.append(new_risk)
                 st.success(f"Risk added with score: {score} ({level})")
+                st.rerun()
         
         # Risk register table
-        sample_risks = [
-            {"ID": "RSK-001", "Domain": "Data Security", "Description": "Data breach via third-party", 
-             "Likelihood": 2, "Impact": 3, "Score": 6, "Level": "HIGH", "Owner": "CISO", "Status": "Open"},
-            {"ID": "RSK-002", "Domain": "Identity & Access Management", "Description": "Privileged account compromise", 
-             "Likelihood": 1, "Impact": 3, "Score": 3, "Level": "MEDIUM", "Owner": "Security Manager", "Status": "Mitigating"},
-            {"ID": "RSK-003", "Domain": "Incident Response", "Description": "Delayed incident response", 
-             "Likelihood": 2, "Impact": 2, "Score": 4, "Level": "MEDIUM", "Owner": "IR Manager", "Status": "Open"}
-        ]
+        data_manager = EnterpriseDataManager()
+        risks = data_manager.get_risk_assessments()
         
-        df_risks = pd.DataFrame(sample_risks)
-        st.dataframe(df_risks, use_container_width=True)
+        if risks:
+            risk_display_data = []
+            for risk in risks:
+                risk_engine = EnterpriseRiskEngine()
+                _, level, _ = risk_engine.calculate_risk_score(risk['likelihood'], risk['impact'])
+                
+                risk_display_data.append({
+                    "ID": risk['risk_id'],
+                    "Domain": risk['domain'],
+                    "Description": risk['description'],
+                    "Likelihood": risk['likelihood'],
+                    "Impact": risk['impact'],
+                    "Score": risk['risk_score'],
+                    "Level": level,
+                    "Owner": risk['owner'],
+                    "Status": risk['status']
+                })
+            
+            df_risks = pd.DataFrame(risk_display_data)
+            st.dataframe(df_risks, use_container_width=True)
+        else:
+            st.info("No risks in the register yet.")
     
     with tabs[1]:
         st.subheader("Risk Analysis & Heat Map")
         
-        # Generate sample data for risk analysis
-        risk_engine = EnterpriseRiskEngine()
-        sample_risk_objects = [
-            RiskAssessment("RSK-001", "Data Security", "Data breach", 2, 3, 6, ["CTRL-001"], "CISO", "Open", datetime.date.today()),
-            RiskAssessment("RSK-002", "Identity Management", "Account compromise", 1, 3, 3, ["CTRL-002"], "Sec Mgr", "Mitigating", datetime.date.today()),
-            RiskAssessment("RSK-003", "Incident Response", "Response delay", 2, 2, 4, ["CTRL-003"], "IR Mgr", "Open", datetime.date.today())
-        ]
+        data_manager = EnterpriseDataManager()
+        risks = data_manager.get_risk_assessments()
         
-        heatmap = risk_engine.generate_risk_heatmap(sample_risk_objects)
-        st.plotly_chart(heatmap, use_container_width=True)
+        if risks:
+            risk_engine = EnterpriseRiskEngine()
+            heatmap = risk_engine.generate_risk_heatmap(risks)
+            st.plotly_chart(heatmap, use_container_width=True)
         
         # Risk trend analysis
         st.subheader("Risk Trend Analysis")
@@ -574,31 +578,39 @@ def create_compliance_module():
                 {"Requirement": "PCI-3.4", "SABSA Domain": "Data Security", "Control": "Data Encryption", "Status": "Compliant"},
                 {"Requirement": "PCI-8.1", "SABSA Domain": "Identity & Access Management", "Control": "User Authentication", "Status": "Compliant"},
                 {"Requirement": "PCI-11.1", "SABSA Domain": "Vulnerability Management", "Control": "Vulnerability Scanning", "Status": "Compliant"}
+            ],
+            "GDPR": [
+                {"Requirement": "Art. 32", "SABSA Domain": "Data Security", "Control": "Data Encryption", "Status": "Compliant"},
+                {"Requirement": "Art. 25", "SABSA Domain": "Data Security", "Control": "Privacy by Design", "Status": "Partial"},
+                {"Requirement": "Art. 33", "SABSA Domain": "Incident Response", "Control": "Breach Notification", "Status": "Compliant"}
             ]
         }
         
         if selected_framework in compliance_mappings:
             df_compliance = pd.DataFrame(compliance_mappings[selected_framework])
             st.dataframe(df_compliance, use_container_width=True)
+        else:
+            st.info(f"Compliance mapping for {selected_framework} not yet configured.")
     
     with tabs[1]:
         st.subheader("Control Assessment")
         
         # Control assessment form
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            control_id = st.text_input("Control ID")
-            control_name = st.text_input("Control Name")
-            assessment_date = st.date_input("Assessment Date")
-        
-        with col2:
-            effectiveness = st.selectbox("Control Effectiveness", ["Ineffective", "Partially Effective", "Effective"])
-            test_result = st.selectbox("Test Result", ["Pass", "Fail", "Exception"])
-            next_review = st.date_input("Next Review Date")
-        
-        if st.button("Submit Assessment"):
-            st.success("Control assessment submitted successfully")
+        with st.expander("Submit Control Assessment"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                control_id = st.text_input("Control ID")
+                control_name = st.text_input("Control Name")
+                assessment_date = st.date_input("Assessment Date")
+            
+            with col2:
+                effectiveness = st.selectbox("Control Effectiveness", ["Ineffective", "Partially Effective", "Effective"])
+                test_result = st.selectbox("Test Result", ["Pass", "Fail", "Exception"])
+                next_review = st.date_input("Next Review Date")
+            
+            if st.button("Submit Assessment"):
+                st.success("Control assessment submitted successfully")
         
         # Assessment results summary
         st.subheader("Assessment Results Summary")
@@ -612,6 +624,20 @@ def create_compliance_module():
         
         df_assessment = pd.DataFrame(assessment_data)
         st.dataframe(df_assessment, use_container_width=True)
+        
+        # Control effectiveness chart
+        fig_assessment = go.Figure()
+        fig_assessment.add_trace(go.Bar(name='Effective', x=assessment_data['Control Category'], y=assessment_data['Effective'], marker_color='green'))
+        fig_assessment.add_trace(go.Bar(name='Partially Effective', x=assessment_data['Control Category'], y=assessment_data['Partially Effective'], marker_color='orange'))
+        fig_assessment.add_trace(go.Bar(name='Ineffective', x=assessment_data['Control Category'], y=assessment_data['Ineffective'], marker_color='red'))
+        
+        fig_assessment.update_layout(
+            title="Control Effectiveness by Category",
+            xaxis_title="Control Category",
+            yaxis_title="Number of Controls",
+            barmode='stack'
+        )
+        st.plotly_chart(fig_assessment, use_container_width=True)
     
     with tabs[2]:
         st.subheader("Audit Management")
@@ -628,28 +654,15 @@ def create_compliance_module():
         
         # Audit findings tracking
         st.subheader("Audit Findings Status")
-        findings_data = {
-            'Finding ID': ['F-001', 'F-002', 'F-003', 'F-004'],
-            'Audit': ['SOX 2023', 'PCI 2023', 'ISO 2023', 'SOX 2023'],
-            'Severity': ['High', 'Medium', 'Low', 'Medium'],
-            'Status': ['Remediated', 'In Progress', 'Open', 'Closed'],
-            'Due Date': ['2024-01-15', '2024-02-28', '2024-03-15', '2024-01-30']
-        }
+        findings_data = [
+            {"Finding ID": "F-001", "Audit": "SOX 2023", "Severity": "High", "Status": "Remediated", "Due Date": "2024-01-15"},
+            {"Finding ID": "F-002", "Audit": "PCI 2023", "Severity": "Medium", "Status": "In Progress", "Due Date": "2024-02-28"},
+            {"Finding ID": "F-003", "Audit": "ISO 2023", "Severity": "Low", "Status": "Open", "Due Date": "2024-03-15"},
+            {"Finding ID": "F-004", "Audit": "SOX 2023", "Severity": "Medium", "Status": "Closed", "Due Date": "2024-01-30"}
+        ]
         
         df_findings = pd.DataFrame(findings_data)
-        
-        # Color code by severity
-        def highlight_severity(val):
-            if val == 'High':
-                return 'background-color: #fecaca'
-            elif val == 'Medium':
-                return 'background-color: #fef3c7'
-            elif val == 'Low':
-                return 'background-color: #d1fae5'
-            return ''
-        
-        styled_df = df_findings.style.applymap(highlight_severity, subset=['Severity'])
-        st.dataframe(styled_df, use_container_width=True)
+        st.dataframe(df_findings, use_container_width=True)
     
     with tabs[3]:
         st.subheader("Compliance Dashboard & Reporting")
@@ -742,6 +755,9 @@ def create_threat_intelligence_module():
                 confidence = st.selectbox("Confidence Level", ["Low", "Medium", "High"])
                 severity = st.selectbox("Severity", ["Low", "Medium", "High", "Critical"])
                 expiry_date = st.date_input("Expiry Date")
+            
+            if st.button("Add IOC"):
+                st.success(f"IOC {ioc_value} added successfully")
         
         # IOC database
         ioc_data = [
@@ -820,19 +836,7 @@ def create_metrics_dashboard():
         }
         
         df_kpis = pd.DataFrame(kpi_data)
-        
-        # Style the dataframe
-        def color_status(val):
-            if val == "Exceeding":
-                return 'background-color: #d1fae5'
-            elif val == "On Track":
-                return 'background-color: #dbeafe'
-            elif val == "At Risk":
-                return 'background-color: #fecaca'
-            return ''
-        
-        styled_kpis = df_kpis.style.applymap(color_status, subset=['Status'])
-        st.dataframe(styled_kpis, use_container_width=True)
+        st.dataframe(df_kpis, use_container_width=True)
         
         # KPI trend visualization
         months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
@@ -1135,17 +1139,7 @@ def create_integration_module():
         ]
         
         df_alerts = pd.DataFrame(recent_alerts)
-        
-        # Color code by severity
-        def highlight_severity(val):
-            if val == 'Critical':
-                return 'background-color: #fecaca'
-            elif val == 'Warning':
-                return 'background-color: #fef3c7'
-            return ''
-        
-        styled_alerts = df_alerts.style.applymap(highlight_severity, subset=['Severity'])
-        st.dataframe(styled_alerts, use_container_width=True)
+        st.dataframe(df_alerts, use_container_width=True)
         
         # System uptime monitoring
         st.subheader("System Uptime Monitoring")
@@ -1159,6 +1153,95 @@ def create_integration_module():
         
         df_uptime = pd.DataFrame(uptime_data)
         st.dataframe(df_uptime, use_container_width=True)
+
+# SABSA Framework (Simplified)
+def create_sabsa_framework():
+    st.header("🔒 SABSA Security Architecture Framework")
+    
+    st.info("Interactive SABSA framework visualization and analysis tools")
+    
+    tabs = st.tabs(["Contextual", "Conceptual", "Logical", "Physical", "Component", "Operational"])
+    
+    with tabs[0]:
+        st.subheader("Contextual Security Architecture")
+        st.write("What assets do we need to protect and why?")
+        
+        # Business context analysis
+        business_drivers = {
+            'Driver': ['Regulatory Compliance', 'Customer Trust', 'Intellectual Property', 'Financial Assets', 'Brand Reputation'],
+            'Priority': ['Critical', 'High', 'High', 'Medium', 'High'],
+            'Impact Score': [95, 85, 80, 70, 88]
+        }
+        
+        df_drivers = pd.DataFrame(business_drivers)
+        st.dataframe(df_drivers, use_container_width=True)
+    
+    with tabs[1]:
+        st.subheader("Conceptual Security Architecture")
+        st.write("What do we need to do to protect our assets?")
+        
+        # Security concepts
+        concepts = ['Authentication', 'Authorization', 'Audit', 'Availability', 'Confidentiality', 'Integrity', 'Non-repudiation']
+        
+        for concept in concepts:
+            with st.expander(f"{concept}"):
+                st.write(f"Implementation strategy and controls for {concept}")
+    
+    with tabs[2]:
+        st.subheader("Logical Security Architecture")
+        st.write("How can we structure our security solution?")
+        
+        # Logical security model
+        st.markdown("""
+        ### Security Domains
+        - **Perimeter Security**: Firewalls, IPS, WAF
+        - **Identity Management**: SSO, MFA, PAM
+        - **Data Security**: Encryption, DLP, Classification
+        - **Endpoint Security**: EDR, Mobile Security
+        - **Application Security**: SAST, DAST, RASP
+        """)
+    
+    with tabs[3]:
+        st.subheader("Physical Security Architecture")
+        st.write("What security products and tools will we use?")
+        
+        # Security tools inventory
+        tools_data = {
+            'Category': ['SIEM', 'Firewall', 'Identity Management', 'Vulnerability Management', 'Endpoint Protection'],
+            'Product': ['Splunk', 'Palo Alto', 'Okta', 'Qualys', 'CrowdStrike'],
+            'Status': ['Deployed', 'Deployed', 'Deployed', 'Deployed', 'Deployed']
+        }
+        
+        df_tools = pd.DataFrame(tools_data)
+        st.dataframe(df_tools, use_container_width=True)
+    
+    with tabs[4]:
+        st.subheader("Component Security Architecture")
+        st.write("What are the detailed security specifications?")
+        
+        # Component specifications
+        st.markdown("""
+        ### Technical Specifications
+        - **Encryption Standards**: AES-256, RSA-2048, TLS 1.3
+        - **Authentication Protocols**: SAML 2.0, OAuth 2.0, OpenID Connect
+        - **Logging Standards**: CEF, SYSLOG, JSON
+        - **API Security**: JWT, mTLS, Rate Limiting
+        """)
+    
+    with tabs[5]:
+        st.subheader("Operational Security Architecture")
+        st.write("How will we manage and operate our security controls?")
+        
+        # Operational processes
+        processes = [
+            {"Process": "Incident Response", "Owner": "SOC Team", "SLA": "15 minutes", "Status": "Active"},
+            {"Process": "Vulnerability Management", "Owner": "Security Team", "SLA": "7 days", "Status": "Active"},
+            {"Process": "Access Review", "Owner": "IAM Team", "SLA": "Monthly", "Status": "Active"},
+            {"Process": "Risk Assessment", "Owner": "Risk Team", "SLA": "Quarterly", "Status": "Active"}
+        ]
+        
+        df_processes = pd.DataFrame(processes)
+        st.dataframe(df_processes, use_container_width=True)
 
 # Main application with enterprise navigation
 def main():
@@ -1221,10 +1304,7 @@ def main():
     elif selected_page == "System Integrations":
         create_integration_module()
     elif selected_page == "SABSA Framework":
-        # Original SABSA framework (simplified version for space)
-        st.header("🔒 SABSA Security Architecture Framework")
-        st.info("Interactive SABSA framework visualization and analysis tools")
-        # Include original framework code here...
+        create_sabsa_framework()
     
     # Global alerts and notifications
     st.sidebar.markdown("---")
